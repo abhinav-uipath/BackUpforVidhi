@@ -1,0 +1,822 @@
+<aura:component implements="flexipage:availableForAllPageTypes,force:appHostable,flexipage:availableForRecordHome,force:hasRecordId,forceCommunity:availableForAllPageTypes,force:lightningQuickAction"
+                access="global" controller="EI_EWI_BatchOfStatementCls">
+    
+    <aura:handler name="init" value="{!this}" action="{!c.doInit}"/>
+    <aura:attribute name="spinner" type="boolean" default="true"/>
+        <aura:attribute name="allGNumberList" type="List" />
+    <aura:attribute name="allAgentWithCasesList" type="List" />
+    <aura:attribute name="allAgentsList" type="List" />
+    <aura:attribute name="filteredAgentsList" type="List" />
+    
+    <aura:attribute name="showAllAgentsList" type="boolean" default="false"/>     
+    <aura:attribute name="gNumberList" type="List" />
+    <aura:attribute name="isShowGNumberList" type="boolean" default="false"/> 
+    <aura:attribute name="selectedGNumber" type="String" default="null"/>
+    <aura:attribute name="branchList" type="List" />
+    <aura:attribute name="isShowBranchList" type="boolean" default="false"/>     
+    <aura:attribute name="selectedBranch" type="String" default="Select all"/>
+    
+    <!-- pagination -->
+    <aura:attribute name="noRecordSelected" type="boolean" default="false"/>  
+    <aura:attribute name="selectedCount" type="Integer" default="0" />
+    <aura:attribute name="PaginationList" type="list" />
+    <aura:attribute name="currentPage" type="integer" default="1" />
+    <aura:attribute name="totalPagesCount" type="integer" default="1" />
+    <aura:attribute name="startPage" type="Integer" />
+    <aura:attribute name="endPage" type="Integer" />
+    <aura:attribute name="totalRecordsCount" type="Integer" />
+    <aura:attribute name="pageSize" type="Integer" default="30"
+                    description="number of records to be display on per page"  /> 
+    
+    <aura:attribute type="List" name="selectedCheckBoxes"/>
+    
+    <!-- method to call from chile component MultiSelect-->
+    <aura:method name="getSelectedOptions" action="{!c.getSelectedOptionsMethod}" access="public">	
+        <aura:attribute name="SelectedLabel" type="String"/>     	
+        <aura:attribute name="selectedValueList" type="List"/> 	
+    </aura:method>
+    
+   <!--loading spinner start--> 
+   <aura:if isTrue="{!v.spinner}">
+      <div class="exampleHolder">
+         <lightning:spinner alternativeText="Loading" size="large" />
+      </div>
+   </aura:if>
+    <div class="">
+        <lightning:card title="Batch of statements">
+            <div style="text-align: left; margin-left: 16px;  margin-right: 500px;">
+                <table>
+                    <tr>
+                        <td>
+                            <!-- <lightning:select name="branches" label="Select gNumber" value="{!v.selectedGNumber}" onchange="{!c.onChangeFilters}">
+                                <option text="Select all" value="Select all"/>
+                                <aura:if isTrue="{!v.isShowGNumberList}">
+                                    <aura:iteration items="{!v.gNumberList}" var="itemVar"> 
+                                        <option text="{!itemVar}" value="{!itemVar}" selected="{!itemVar==v.selectedGNumber}"/>
+                                    </aura:iteration> 
+                                </aura:if>
+                            </lightning:select> -->
+                            <c:MultiSelect msoptions="{!v.gNumberList}" mslabel="G-Number" parent="{!this}" />
+                        </td>
+                        <td>
+                            <aura:if isTrue="{!v.isShowBranchList}">
+                                <!-- <lightning:select name="branches" label="Select Branch" value="{!v.selectedBranch}" >
+                                    <option text="Select all" value="Select all"/>
+                                    
+                                    <aura:iteration items="{!v.branchList}" var="itemVar"> 
+                                        <option text="{!itemVar.label}" value="{!itemVar.value}" selected="{!itemVar.value==v.selectedBranch}"/>
+                                    </aura:iteration> 
+                                    
+                                </lightning:select> -->
+                                <c:MultiSelect msoptions="{!v.branchList}" mslabel="Branches" parent="{!this}" />
+                            </aura:if>
+                        </td>
+                    </tr>
+                </table>
+            </div>
+            <br/>
+            <!-- <aura:if isTrue="{!v.showAllAgentsList}"> -->
+                <div class="slds-grid slds-gutters" style = "float:right;">
+                    <aura:if isTrue="{!v.selectedCount}">
+                        <div class="slds-col"><input class="slds-button slds-button_brand mg-left" type = "button" value = "Send" onclick="{! c.downloadPDF}"/></div>
+                        <aura:set attribute="else">
+                            <div class="slds-col"><input style="background-color:#8c8cac" class="slds-button slds-button_brand mg-left" type = "button" value = "Send" onclick="{! c.handleErrorMessage}"/></div>
+                        </aura:set>
+                    </aura:if>
+                     <!--<div class="slds-col">
+                     <a class="slds-button slds-button_destructive amberButton" href="{!'/apex/EI_EWI_StatementOfAccount?gNumber='+v.selectedGNumber}" id="lnkDownload" target="_blank" download="Aged debtor report">Export as PDF{!v.selectedGNumber}</a>                    
+                    </div> -->
+                </div>
+                <br/>
+                <div class="slds-scrollable_x" style="height:100%;width:100%;">
+                    <table class="slds-table_cell-buffer slds-table_bordered slds-table_col-bordered" aria-labelledby="element-with-table-label other-element-with-table-label">
+                        <thead>
+                            <tr>
+                                <th class="" scope="col">
+                                    <div class="tenant_cover_table" style="box-shadow:none;">
+                                        <div class="form-check form-check-inline">
+                                            <label class="main">
+                                                <ui:inputCheckbox disabled="{!v.totalRecordsCount == 0}"
+                                                                  aura:id="selectAllId" 
+                                                                  change="{!c.selectAllCheckbox}"/>
+                                                <span class="geekmark"></span>
+                                            </label> 
+                                        </div>
+                                        <label>Select all</label>
+                                    </div>
+                                </th>
+                                <th class="" scope="col"><div class="slds-truncate">Customer name</div></th>
+                                <th class="" scope="col"><div class="slds-truncate">Customer G-Number </div></th>
+                                <th class="" scope="col"><div class="slds-truncate">Amount total balance</div></th>
+                                <th class="" scope="col"><div class="slds-truncate">Amount received</div></th>
+                                <th class="" scope="col"><div class="slds-truncate">Amount outstanding</div></th>
+                                <th class="" scope="col"><div class="slds-truncate">Statement last sent date </div></th>
+                                <th class="" scope="col"><div class="slds-truncate">Review as PDF</div></th>
+                            </tr>
+                        </thead>
+                        <aura:if isTrue="{!v.showAllAgentsList}">
+                        <tbody>
+                            <aura:iteration items="{!v.PaginationList}" var="obj">
+                                <tr> 
+                                    <td><ui:inputCheckbox name="{!obj.gNumber}" class="slds-checkbox" value="{!obj.isSelected}" change="{!c.selectedproduct}" /></td>
+                                    <td>{!obj.agllName}</td>
+                                    <td>{!obj.gNumber}</td>
+                                    <td><lightning:formattedNumber value="{!obj.totalBalanceAmount}" style="currency" currencyCode="GBP" minimumFractionDigits="2" maximumFractionDigits="2"/></td>
+                                    <td><lightning:formattedNumber value="{!obj.recivedAmount}" style="currency" currencyCode="GBP" minimumFractionDigits="2" maximumFractionDigits="2"/></td>
+                                    <td><lightning:formattedNumber value="{!obj.balanceOutstanding}" style="currency" currencyCode="GBP" minimumFractionDigits="2" maximumFractionDigits="2"/></td>
+                                    <td><lightning:formattedDateTime value="{!obj.lastSentDate}" year="numeric" month="numeric" day="numeric" /></td>
+                                	<td><a class="slds-button slds-button_destructive amberButton" href="{!'/apex/EI_EWI_StatementOfAccount?gNumber='+obj.gNumber+'&amp;agllName='+obj.agllName+'&amp;selectedBranch='+v.selectedBranch}" target="_blank">Review as PDF</a>                    </td>
+                                </tr>
+                            </aura:iteration>
+                        </tbody>
+                        </aura:if>
+                    </table>
+                    <div>
+                        <aura:if isTrue="{!!v.NoRecordsFound}">
+                            <nav aria-label="Page navigation">
+                                <ul style=" margin-top: 15px;text-align:center;">
+                                    <aura:if isTrue="{!or(v.startPage == 0,v.PaginationList.length==0)}">
+                                        <li class="page-item disabled" style="display:inline-block; margin-right: 15px"><a class="page-link" href="" >Previous</a></li>
+                                        <aura:set attribute="else">
+                                            <li class="page-item" style="display:inline-block; margin-right: 15px"><a class="page-link" id="previousId" style="width :120px" href="" onclick="{!c.navigation}">Previous</a></li>
+                                        </aura:set>
+                                    </aura:if>
+                                    <li class="page-item" style="display:inline-block; margin-right: 15px"><a class="page-link" href="" style="width :120px">Page {!v.currentPage} out of {!v.totalPagesCount}</a></li>
+                                    <aura:if isTrue="{!or((v.endPage + 1) >= v.totalRecordsCount,v.PaginationList.length==0 )}">
+                                        <li class="page-item disabled" style="display:inline-block"><a class="page-link" href="" >Next</a></li>							
+                                        <aura:set attribute="else">
+                                            <li class="page-item" style="display:inline-block"><a class="page-link" id="nextId" href="" onclick="{!c.navigation}">Next</a></li>
+                                        </aura:set>
+                                    </aura:if>
+                                </ul>
+                            </nav>
+                        </aura:if>
+                    </div>  
+                </div>
+            <!-- </aura:if> -->
+        </lightning:card>
+    </div>
+</aura:component>
+
+
+
+
+-------------------------------------------------------Controller-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+({
+    doInit : function(component, event, helper) {
+        var action = component.get('c.getDataInWrapperList');
+        action.setParams({
+            selectedgNumber : 'Select all',
+            agllName : 'Select all',
+            selectedBranchSTR : 'Select all'
+        });
+        action.setCallback(this, function(response) {
+            if(response.getState() == 'SUCCESS'){
+                let result = response.getReturnValue();
+                if(result != null){
+                    let nameAndGnumber = result.nameAndGnumber;
+                    let allAgentsList = result.PDFWrapperList;
+                    
+                    // filters
+                    if(allAgentsList.length > 0){
+                        var gNumberNameMap = [{'label':'Select all', 'value':'Select all', 'selected':true}];
+                        var gNumberList = [];
+                        for(let i in nameAndGnumber){
+                            if(!gNumberList.includes(nameAndGnumber[i].gNumber) && nameAndGnumber[i].gNumber != '' && nameAndGnumber[i].gNumber != undefined){
+                                gNumberList.push(nameAndGnumber[i].gNumber);    
+                                gNumberNameMap.push({'label':nameAndGnumber[i].gNumber, 'value': nameAndGnumber[i].name, 'accRecord': nameAndGnumber[i].accRecord});
+                            }
+                        }
+
+                        component.set('v.allAgentsList', allAgentsList);
+                        
+                        component.set('v.gNumberList', gNumberNameMap); // component.set('v.gNumberList', gNumberList);
+                        component.set('v.isShowGNumberList', true);
+                        
+                            
+                        
+                        component.set("v.allAgentsList", allAgentsList);
+                        component.set("v.filteredAgentsList", allAgentsList);
+                        component.set("v.spinner",false);
+                        
+                        // pagination on report data
+                        var pageSize = component.get("v.pageSize");
+                        var totalLength = allAgentsList.length;
+                        component.set("v.totalRecordsCount", totalLength);
+                        component.set("v.startPage", 0);
+                        component.set("v.endPage", pageSize - 1);
+                        var PaginationLst = [];
+                        for (var i = 0; i < pageSize; i++) {
+                            if (totalLength > i) {
+                                PaginationLst.push(allAgentsList[i]);
+                            }
+                        }
+                        component.set("v.PaginationList", PaginationLst);
+                        component.set("v.selectedCount", 0);
+                        //use Math.ceil() to Round a number upward to its nearest integer
+                        component.set("v.totalPagesCount", Math.ceil(totalLength / pageSize));
+                        
+                        component.set("v.showAllAgentsList", true);
+                    }
+                }else{
+                    component.set("v.spinner",false);
+                }
+            }else{
+                component.set("v.spinner",false);
+            }
+        });
+        $A.enqueueAction(action);
+    },
+    
+    getSelectedOptionsMethod : function(component, event, helper){	
+        console.log("getSelectedOptionsMethod called");	
+        //get method paramaters from Child multiSelect	
+        var params = event.getParam('arguments');	
+        console.log("params => " + params);	
+        if (params) {	
+            var SelectedLabel = params.SelectedLabel;	
+            var selectedValueList = params.selectedValueList;	
+            console.log("SelectedLabel => " + SelectedLabel);	
+            console.log("selectedValueList => " + selectedValueList);	
+            if(SelectedLabel == 'G-Number'){	
+                component.set("v.selectedGNumber", selectedValueList);	
+                helper.handleSelectGNumber(component, event, helper, selectedValueList);
+                // var action = component.get('c.onChangeFilters');	
+                // $A.enqueueAction(action);
+            }	
+            else if(SelectedLabel == 'Branches'){
+                selectedValueList = selectedValueList.replaceAll('&', '%26');
+                component.set("v.selectedBranch", selectedValueList);	
+            }	
+        }		
+    },
+
+    onChangeFilters: function(component, event, helper){
+        let selectedGNumber = component.get("v.selectedGNumber");
+        console.log('selectedGNumber => ' + selectedGNumber);
+        helper.handleSelectGNumber(component, event, helper, selectedGNumber);
+    },
+    
+    downloadPDF: function(component, event, helper){
+        component.set("v.spinner", true);
+        console.log('downloadPDF called ');
+        var selectedBranch = component.get("v.selectedBranch");
+        
+        var selectedData = component.get("v.selectedCheckBoxes");
+        var filteredAgentsList = component.get("v.filteredAgentsList");
+        var PaginationList = component.get("v.PaginationList");
+        var allAgentsList = component.get("v.allAgentsList");
+        
+        var selectedGnumber = '';
+        console.log('selectedData.length => ' + selectedData.length);
+          for(var i=0; i<selectedData.length; i++){
+              selectedGnumber += selectedData[i].gNumber+':'+selectedData[i].agllName;
+              if(i != selectedData.length-1){
+                  selectedGnumber += ',';
+              }
+          }
+      //  alert('selectedGnumber '+JSON.stringify(selectedGnumber));
+        var action = component.get('c.sendAsPDF');
+        action.setParams({
+            selectedAgllListstr: selectedGnumber,
+            selectedBranch : selectedBranch
+        })
+        action.setCallback(this, function(response) {
+            
+            console.log('downloadPDF Ran');
+            var state = response.getState();
+            console.log('state => ' + state);
+            if(response.getState() == 'SUCCESS'){
+                console.log('Succeed ');
+                console.log("return msg => " + response.getReturnValue());
+                component.set("v.spinner", false);
+                helper.showToast('Success!','Process complete','Success'); 
+                
+                var selectedCheckBoxes = component.get("v.selectedCheckBoxes");
+                for(var i=0; i<selectedCheckBoxes.length; i++){
+                    selectedCheckBoxes[i].isSelected = false;
+                }
+                for(var i=0; i<filteredAgentsList.length; i++){
+                    filteredAgentsList[i].isSelected = false;
+                }
+                for(var i=0; i<PaginationList.length; i++){
+                    PaginationList[i].isSelected = false;
+                }
+                component.find("selectAllId").set("v.value", false);
+                component.set("v.selectedCheckBoxes", selectedCheckBoxes);
+                component.set("v.filteredAgentsList", filteredAgentsList);
+                component.set("v.PaginationList", PaginationList);
+            }else{
+                console.log('Errors => ' + JSON.stringify(response.getError()));
+            }
+        });
+        $A.enqueueAction(action);
+    },
+
+    handleErrorMessage: function(component, event, helper){
+        helper.showToast('Error!','Please select at least one customer to send statement of Account','Error');
+    },
+    
+    navigation : function(component, event, helper){
+        var sObjectList = component.get("v.filteredAgentsList");
+        var end = component.get("v.endPage");
+        var start = component.get("v.startPage");
+        var pageSize = component.get("v.pageSize");
+        //var whichBtn = event.getSource().get("v.name");
+        //
+        // check if whichBtn value is 'next' then call 'next' helper method
+        if (event.target.id == "nextId") {
+            component.set("v.currentPage", component.get("v.currentPage") + 1);
+            helper.next(component, event, sObjectList, end, start, pageSize);
+        }
+        // check if whichBtn value is 'previous' then call 'previous' helper method
+        else if (event.target.id == "previousId") {
+            component.set("v.currentPage", component.get("v.currentPage") - 1);
+            helper.previous(component, event, sObjectList, end, start, pageSize);
+        } 
+    },   
+    
+    exportReport : function(component, event, helper){
+        var allSelectedInst=component.get("v.selectedCheckBoxes");
+        console.log('allSelectedInst : '+JSON.stringify(allSelectedInst));
+        var caseListAdd=[];
+        console.log('here');
+        for(var i=0;i < allSelectedInst.length;i++)
+        {   
+            var temp={"Date entered evidence gathering":allSelectedInst[i].Case__r==undefined || allSelectedInst[i].Case__r.Evidence_Gathering_Start_Date__c==undefined?'':allSelectedInst[i].Case__r.Evidence_Gathering_Start_Date__c,
+                      "Case reference":allSelectedInst[i].Case__r.v_external_Id__c==undefined?'':allSelectedInst[i].Case__r.v_external_Id__c,
+                      "Case status":allSelectedInst[i].Case__r.Status==undefined?'':allSelectedInst[i].Case__r.Status,
+                      "First line of tenancy address and postcode":allSelectedInst[i].Case__r==undefined || allSelectedInst[i].Case__r.Deposit_Account_Number__r==undefined || allSelectedInst[i].Case__r.Deposit_Account_Number__r.Property_Address__c==undefined?'':allSelectedInst[i].Case__r.Deposit_Account_Number__r.Property_Address__c,
+                      "Amount outstanding":'',
+                      "Days overdue":'',
+                      "Transaction reference":'',
+                      "Statement last sent date":'',
+                     };        
+            console.log('temp : '+JSON.stringify(temp));
+            caseListAdd.push(temp);
+        }
+        console.log('caseListAdd : '+JSON.stringify(caseListAdd));
+        var csv = helper.convertListToCSV(component, caseListAdd);
+        var hiddenElement = document.createElement('a');
+        hiddenElement.href = 'data:text/csv;charset=utf-8,' + encodeURI(csv);
+        hiddenElement.target = '_self';
+        hiddenElement.download = 'Batch of statements';
+        document.body.appendChild(hiddenElement); //Required for FireFox browser
+        hiddenElement.click(); // using click() js function to download csv file
+    },
+    
+    selectedproduct : function(component, event, helper) {
+        console.log("selectedproduct");
+        
+        var capturedCheckboxName = event.getSource().get("v.name");
+        var capturedCheckboxValue = event.getSource().get("v.value");
+        console.log("capturedCheckboxName="+capturedCheckboxName);
+        console.log("capturedCheckboxValue="+capturedCheckboxValue);
+        var allAgentsList = component.get("v.allAgentsList");
+        var filteredAgentsList = component.get("v.filteredAgentsList");
+        var PaginationList = component.get("v.PaginationList");
+        var selectedCheckBoxes = component.get("v.selectedCheckBoxes");
+        
+        var getSelectedNumber = component.get("v.selectedCount");
+        if (capturedCheckboxValue == true) {
+            getSelectedNumber++;
+        } else {
+            getSelectedNumber--;
+            component.find("selectAllId").set("v.value", false);
+        }
+        console.log("getSelectedNumber => "+getSelectedNumber);
+        
+        let start = component.get("v.startPage");
+        let end = component.get("v.endPage");
+        
+        if(getSelectedNumber > 30){
+            alert("you can not select more then 30 record at a time");
+            for(var i=0; i<allAgentsList.length; i++){
+                if(allAgentsList[i].gNumber==capturedCheckboxName){
+                    allAgentsList[i].isSelected = false;
+                    break;
+                }
+            }
+            for(var i=start; i<end; i++){
+                if(filteredAgentsList[i].gNumber==capturedCheckboxName){
+                    filteredAgentsList[i].isSelected = false;
+                    break;
+                }
+            }
+            for(var i=0; i<PaginationList.length; i++){
+                if(PaginationList[i].gNumber==capturedCheckboxName){
+                    PaginationList[i].isSelected = false;
+                    break;
+                }
+            }
+        }
+        else{
+            if(capturedCheckboxValue== true){
+                for(var i=0; i<allAgentsList.length; i++){
+                    if(allAgentsList[i].gNumber==capturedCheckboxName){
+                        allAgentsList[i].isSelected = true;
+                        break;
+                    }
+                }
+                for(var i=start; i<end; i++){
+                    if(filteredAgentsList[i].gNumber==capturedCheckboxName){
+                        filteredAgentsList[i].isSelected = true;
+                        selectedCheckBoxes.push(filteredAgentsList[i]);
+                        break;
+                    }
+                }
+                for(var i=0; i<PaginationList.length; i++){
+                    if(PaginationList[i].gNumber==capturedCheckboxName){
+                        PaginationList[i].isSelected = true;
+                        break;
+                    }
+                }
+            }
+            else{
+                for(var i=0; i<selectedCheckBoxes.length; i++){
+                    if(selectedCheckBoxes[i].gNumber==capturedCheckboxName){
+                        selectedCheckBoxes.splice(i, 1);
+                        break;
+                    }
+                }
+                for(var i=0; i<allAgentsList.length; i++){
+                    if(allAgentsList[i].gNumber==capturedCheckboxName){
+                        allAgentsList[i].isSelected = false;
+                        break;
+                    }
+                }
+                for(var i=start; i<end; i++){
+                    if(filteredAgentsList[i].gNumber==capturedCheckboxName){
+                        filteredAgentsList[i].isSelected = false;
+                        break;
+                    }
+                }
+                for(var i=0;i<PaginationList.length;i++){
+                    if(PaginationList[i].gNumber==capturedCheckboxName){
+                        PaginationList[i].isSelected = false;
+                        break;
+                    }
+                }
+            }
+        }
+        component.set("v.selectedCheckBoxes", selectedCheckBoxes);
+        component.set("v.allAgentsList", allAgentsList);
+        component.set("v.filteredAgentsList", filteredAgentsList);
+        component.set("v.PaginationList", PaginationList);
+        component.set("v.selectedCount", selectedCheckBoxes.length);
+        console.log("selectedCheckBoxes="+selectedCheckBoxes);
+        console.log("length="+selectedCheckBoxes.length);
+        
+        if(selectedCheckBoxes.length == 1){
+            helper.handleShowBranches(component, event, helper, selectedCheckBoxes[0].gNumber);
+        }else{
+            //hide branch list to select
+            component.set('v.isShowBranchList', false);
+        }
+        
+        let checkedRecCount = 0;
+        for (var i = 0; i < PaginationList.length; i++) {
+            if(PaginationList[i].isSelected == true) {
+                checkedRecCount++;
+            }
+        }
+        if(checkedRecCount == PaginationList.length){
+            component.find("selectAllId").set("v.value", true);
+        }else{
+            component.find("selectAllId").set("v.value", false);
+        }
+        
+    },
+    
+    selectAllCheckbox: function(component, event, helper) {
+        //hide branch list to select
+        component.set('v.isShowBranchList', false);
+        
+        var selectedHeaderCheck = event.getSource().get("v.value");
+        var updatedAllRecords = [];
+        var updatedPaginationList = [];
+        var allAgentsList = component.get("v.allAgentsList");
+        var filteredAgentsList = component.get("v.filteredAgentsList");
+        var PaginationList = component.get("v.PaginationList");
+        var selectedRecords = component.get("v.selectedCount");
+        
+        let startind = component.get("v.startPage");
+        let endind = component.get("v.endPage");
+        
+        let checkedRecCount = 0;
+        for (var i = 0; i < PaginationList.length; i++) {
+            if (PaginationList[i].isSelected == true) {
+                checkedRecCount++;
+            }
+        }
+        
+        if((selectedRecords +(endind-startind+1) - checkedRecCount) > 30){
+            alert("you can not select more then 30 record at a time");
+            component.find("selectAllId").set("v.value", false);
+        }
+        else{
+            // play a for loop on all records list 
+            for (var i = 0; i < filteredAgentsList.length; i++) {
+                // check if header checkbox is 'true' then update all checkbox with true and update selected records count
+                // else update all records with false and set selectedCount with 0  
+                if(i == startind &&  i <= endind){
+                    console.log('i =>' + i);
+                    console.log('startind =>' + startind);
+                    console.log('endind =>' + endind);
+                    if (selectedHeaderCheck == true) {
+                        console.log('selectedHeaderCheck =>' + selectedHeaderCheck);
+                        filteredAgentsList[i].isSelected = true;
+                    } else {
+                        filteredAgentsList[i].isSelected = false;
+                    }
+                }
+                updatedAllRecords.push(filteredAgentsList[i]);
+            }
+            
+            for(var i = 0; i < allAgentsList.length; i++){
+                for(var j = 0; j < filteredAgentsList.length; j++){
+                    if(allAgentsList[i].gNumber == filteredAgentsList[j].gNumber){
+                        allAgentsList[i].isSelected = filteredAgentsList[j].isSelected;
+                    }
+                }
+            }
+            // update the checkbox for 'PaginationList' based on header checbox 
+            for (var i = 0; i < PaginationList.length; i++) {
+                if (selectedHeaderCheck == true) {
+                    PaginationList[i].isSelected = true;
+                } else {
+                    PaginationList[i].isSelected = false;
+                }
+                updatedPaginationList.push(PaginationList[i]);
+            }
+            component.set("v.allAgentsList", allAgentsList);
+            component.set("v.filteredAgentsList", updatedAllRecords);
+            component.set("v.PaginationList", updatedPaginationList);
+            console.log("allAgentsList after => " + JSON.stringify(component.get("v.allAgentsList")));
+            var allRecords = component.get("v.allAgentsList");
+            var selectedRecords = [];
+            for (var i = 0; i < allRecords.length; i++) {
+                if (allRecords[i].isSelected) {
+                    selectedRecords.push(allRecords[i]);
+                }
+            }
+            
+            component.set("v.selectedCheckBoxes",selectedRecords);
+            component.set("v.selectedCount", selectedRecords.length);
+            console.log("selectedRecords => " + selectedRecords);
+        }
+    },
+    
+})
+
+
+--------------------------------------------------------------------HELPER-------------------------------------------------------------------------------------------------
+
+({
+    showToast : function(title,msg,type) {
+        console.log('title '+title);
+        var toastEvent = $A.get("e.force:showToast");
+        toastEvent.setParams({
+            title : title,
+            message:msg,
+            duration:' 5000',
+            key: 'info_alt',
+            type: type,
+            mode: 'dismissible'
+            
+        });
+        toastEvent.fire();
+    },
+    
+    convertListToCSV: function (component, list) {
+
+        var csvStringResult, counter, keys, columnDivider, lineDivider;
+        //var csvHeader = '*** Batch of statements *** ';
+
+        // check if "list" parameter is null, then return from function
+        if (list == null || !list.length) {
+            return null;
+        }
+        // store ,[comma] in columnDivider variabel for sparate CSV values and
+        // for start next line use '\n' [new line] in lineDivider varaible
+        columnDivider = ',';
+        lineDivider =  '\n';
+
+        // in the keys valirable store fields API Names as a key
+        // this labels use in CSV file header  
+        keys = ['Date entered evidence gathering', 'Case reference', 'Case status', 'First line of tenancy address and postcode', 
+                'Amount outstanding', 'Days overdue', 'Transaction reference', 'Statement last sent date'];
+
+        csvStringResult = lineDivider;
+        csvStringResult += keys.join(columnDivider);
+        csvStringResult += lineDivider;
+
+        for(var i=0; i < list.length; i++){
+            counter = 0;
+
+            for(var sTempkey in keys) {
+                var skey = keys[sTempkey] ;
+
+                // add , [comma] after every String value,. [except first]
+                if(counter > 0){
+                    csvStringResult += columnDivider;
+                }
+                csvStringResult += '"'+ list[i][skey]+'"';
+
+                counter++;
+
+            } // inner for loop close
+            csvStringResult += lineDivider;
+        }// outer main for loop close
+
+        // return the CSV format String
+        return csvStringResult;
+    },
+
+    // navigate to next pagination record set
+    next: function(component, event, sObjectList, end, start, pageSize) {
+        var Paginationlist = [];
+        var counter = 0;
+        for (var i = end + 1; i < end + pageSize + 1; i++) {
+            if (sObjectList.length > i) {
+                {
+                    Paginationlist.push(sObjectList[i]);
+                }
+            }
+            counter++;
+        }
+        start = start + counter;
+        end = end + counter;
+        component.set("v.startPage", start);
+        component.set("v.endPage", end);
+        component.set("v.PaginationList", Paginationlist);
+
+        let checkedRecCount = 0;
+        for (var i = 0; i < Paginationlist.length; i++) {
+            if(Paginationlist[i].isSelected == true) {
+                checkedRecCount++;
+            }
+        }
+        if(checkedRecCount == Paginationlist.length){
+            component.find("selectAllId").set("v.value", true);
+        }else{
+            component.find("selectAllId").set("v.value", false);
+        }
+    },
+    
+    // navigate to previous pagination record set
+    previous: function(component, event, sObjectList, end, start, pageSize) {
+        var Paginationlist = [];
+        var counter = 0;
+        for (var i = start - pageSize; i < start; i++) {
+            if (i > -1) {
+                {
+                    Paginationlist.push(sObjectList[i]);
+                }
+                counter++;
+            } else {
+                start++;
+            }
+        }
+        start = start - counter;
+        end = end - counter;
+        component.set("v.startPage", start);
+        component.set("v.endPage", end);
+        component.set("v.PaginationList", Paginationlist);
+
+        let checkedRecCount = 0;
+        for (var i = 0; i < Paginationlist.length; i++) {
+            if(Paginationlist[i].isSelected == true) {
+                checkedRecCount++;
+            }
+        }
+        if(checkedRecCount == Paginationlist.length){
+            component.find("selectAllId").set("v.value", true);
+        }else{
+            component.find("selectAllId").set("v.value", false);
+        }
+    },
+    
+    handleSelectGNumber: function(component, event, helper, selectedGNumber){
+        console.log('selectedGNumber => ' + selectedGNumber);
+
+        var seletedGNumberList = selectedGNumber.split(', ');
+        console.log('seletedGNumberList => ' + seletedGNumberList);
+        var allAgentsList = component.get("v.allAgentsList");
+        var filteredAgentsList = [];
+        var branchList = [];
+        var branchObjList = [{'label':'Select all', 'value':'Select all', 'selected':true}];
+        
+        if(allAgentsList.length > 0){
+            if(selectedGNumber!='Select all'){ 
+                for(let i in allAgentsList){
+                    
+                    if(selectedGNumber.includes(allAgentsList[i].gNumber)){
+                        for(let gNumber of seletedGNumberList){
+                            console.log('gNumber => ' + gNumber);
+                            console.log('allAgentsList[i].gNumber => ' + allAgentsList[i].gNumber);
+                            if(gNumber == allAgentsList[i].gNumber){ 
+                                console.log('gnumber Matched !');
+                                filteredAgentsList.push(allAgentsList[i]);
+                                // branchObjList.addAll(allAgentsList[i].brancheDetailsWrapperList);
+                                // iterate over the cases of selected gNumber's case participant 
+                                for(let reportCol of allAgentsList[i].reportColumnsWrapperList){
+                                    console.log('reportCol => ' + JSON.stringify(reportCol));
+                                    if(reportCol.EWIBranchId != undefined){
+                                        let obj = {'label': reportCol.EWIBranchName , 'value': reportCol.EWIBranchId, 'selected':false};
+                                    
+                                        if(!branchList.includes(reportCol.EWIBranchId) && reportCol.EWIBranchId != '' && reportCol.EWIBranchId != undefined){
+                                            console.log('memberStatus not includes');
+                                            branchList.push(reportCol.EWIBranchId);    
+                                            branchObjList.push(obj);
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+
+                console.log("filteredAgentsList.length => " + filteredAgentsList.length);
+                if(filteredAgentsList.length == 1){
+                    component.set('v.isShowBranchList', true);
+                }else{
+                    component.set('v.isShowBranchList', false);
+                }
+            }else{
+                filteredAgentsList = allAgentsList; 
+                component.set('v.isShowBranchList', false);
+            }
+            component.set("v.filteredAgentsList", filteredAgentsList);   
+            component.set('v.branchList', branchObjList);
+            console.log('branchObjList => ' + JSON.stringify(branchObjList));
+            
+            // pagination
+            if(filteredAgentsList.length > 0){
+                var pageSize = component.get("v.pageSize");
+                var totalLength = filteredAgentsList.length;
+                component.set("v.totalRecordsCount", totalLength);
+                component.set("v.startPage", 0);
+                component.set("v.endPage", pageSize - 1);
+                var PaginationLst = [];
+                for (var i = 0; i < pageSize; i++) {
+                    if (totalLength > i) {
+                        PaginationLst.push(filteredAgentsList[i]);
+                    }
+                }
+                component.set("v.PaginationList", PaginationLst);
+                component.set("v.selectedCount", 0);
+                //use Math.ceil() to Round a number upward to its nearest integer
+                component.set("v.totalPagesCount", Math.ceil(totalLength / pageSize));
+                
+                component.set("v.showAllAgentsList", true);
+            }
+        }
+    },
+    
+    handleShowBranches: function(component, event, helper, selectedGNumber){
+        console.log('selectedGNumber => ' + selectedGNumber);
+        
+        var seletedGNumberList = selectedGNumber.split(', ');
+        var allAgentsList = component.get("v.allAgentsList");
+        var branchList = [];
+        var branchObjList = [{'label':'Select all', 'value':'Select all', 'selected':true}];
+        
+        // pagination
+        if(allAgentsList.length > 0){
+            if(selectedGNumber!='Select all'){ 
+                for(let i in allAgentsList){
+                    console.log('allAgentsList[i] => ' + JSON.stringify(allAgentsList[i]));
+                    
+                    if(allAgentsList[i].gNumber == selectedGNumber){
+                        for(let gNumber of seletedGNumberList){
+                            if(gNumber==allAgentsList[i].gNumber){ 
+                                console.log('gNumber => ' + gNumber);
+                                // branchObjList.addAll(allAgentsList[i].brancheDetailsWrapperList);
+                                // iterate over the cases of selected gNumber's case participant 
+                                for(let reportCol of allAgentsList[i].reportColumnsWrapperList){
+                                    console.log('reportCol => ' + JSON.stringify(reportCol));
+                                    if(reportCol.EWIBranchId != undefined){
+                                        let obj = {'label': reportCol.EWIBranchName , 'value': reportCol.EWIBranchId, 'selected':false};
+                                        
+                                        if(!branchList.includes(reportCol.EWIBranchId) && reportCol.EWIBranchId != '' && reportCol.EWIBranchId != undefined){
+                                            console.log('memberStatus not includes');
+                                            branchList.push(reportCol.EWIBranchId);    
+                                            branchObjList.push(obj);
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }   
+                component.set('v.branchList', branchObjList);
+                console.log('branchObjList => ' +  JSON.stringify(branchObjList));
+                component.set('v.isShowBranchList', true);
+            }else{
+                component.set('v.isShowBranchList', false);
+            }
+        }
+    },
+})

@@ -1,0 +1,222 @@
+<apex:page controller="EI_EWI_BatchOfStatementCls"  applyHtmlTag="false" sidebar="false" showHeader="false"  standardStylesheets="false" applyBodyTag="false"  renderAs="pdf">
+     <apex:styleSheet value="{!URLFOR($Resource.StatementOfAccount,'/assets/css/custom.css')}" />        
+     <!--   <apex:includeScript value="{!URLFOR($Resource.StatementOfAccount,'/assets/js/plugin.min.js')}"/>
+        <apex:includeScript value="{!URLFOR($Resource.StatementOfAccount,'/assets/js/plugin.min.js')}"/>-->
+        
+    <head>
+        <!-- Required meta tags -->
+        <meta charset="utf-8"/>
+        <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no"/>
+       
+         <style type="text/css">
+               @page {    
+            size: A4 landscape;
+            size: 15.27in 9.8in;
+            border: 2px solid black;
+            /* size: A4 landscape;
+            margin-left: 0cm;
+            margin-top: 0.1cm;
+            margin-right: 0.1cm;
+            margin-bottom: 0cm;
+            size: 15.27in 15.8in; */
+            }    
+            td {    
+            text-align: center;    
+            font-size: 16px; 
+            border-collapse: collapse;
+            }
+            tr {    
+            text-align: center;    
+            font-size: 16px;
+            
+            }
+       
+        </style>
+
+       
+        <title>TDS</title>
+        
+    </head>
+    <body>
+        <!-- Account Statement HTML Start -->
+        <section class="Account_statement">
+            <div class="container-fluid">
+                <table style="width: 100%; text-align: left;">
+                    <tr>
+                        <td style="text-align: left">
+                            <address>PO Box 1255, Hemel Hempstead, Herts HPI 9GN <br/> 
+                                Tel: 0300 037 1000 <br/> 
+                                Email: credit.control@tenancydepositscheme.com <br/> 
+                                Website: www.tenancydepositscheme.com<br/></address>
+                        </td>
+                        <td style="text-align: right; padding-right: 20px">
+                            <img src="{!URLFOR($Resource.StatementOfAccount,'/assets/img/as_logo.png')}" alt="Logo" title="TDS Logo"/>
+                            
+                        </td>
+                    </tr>
+                    
+
+                    <tr>
+                    <td style="text-align: left">
+                        <p class="text-uppercase"><strong>STATEMENT OF account</strong></p>
+                    </td>
+                       <td></td>
+                    </tr>
+                    
+
+                    <tr>
+                        <td style="text-align: left">
+                        <address>Disputes Credit Control Contact Name: {!agllName},<br/>
+                            <!-- {!agllName},<br/>  -->
+                            {!address1},<br/> 
+                            {!address2},<br/> 
+                            {!postCode}<br/> </address>
+                    </td>
+                    <td style="text-align: right; padding-right: 20px">
+                        <p><strong>TDS Membership number: </strong>{!gNumber}</p>
+                        <p><strong>Date: </strong>
+                            <apex:outputText value="{0, date,  dd / MM / yyyy}">
+                                <apex:param value="{!todayDate}" />
+                            </apex:outputText></p>
+                        <!-- <p><strong>Page: </strong>115</p> --> 
+                    </td>
+                    </tr>
+                    
+                </table>
+
+                <div class="custom_as_table mt-5">
+                    <div class="as_row">
+                        <div class="as_head">Date</div>
+                        <div class="as_head">Branch name</div>
+                        <div class="as_head">Case ref</div>
+                        <div class="as_head">Tenancy addresss</div>
+                        <div class="as_head">Case status</div>
+                        <div class="as_head">Days overdue</div>
+                        <div class="as_head">Credit</div>
+                        <div class="as_head">Debit</div>
+                        <div class="as_head">Outstanding</div>
+                    </div>
+                    <apex:outputpanel rendered="{!PDFWrapperData!=null}">
+                        <apex:repeat value="{!PDFWrapperData.reportColumnsWrapperList}" var="reportCol">
+                            <div class="as_row">
+                                <div class="as_column pb-5 pt-5" style="min-width: 75px;">
+                                    <apex:outputText value="{0, date,  dd / MM / yyyy}">
+                                    <apex:param value="{!reportCol.dueDate}" />
+                                    </apex:outputText>
+                                </div>
+                                <div class="as_column pb-5 pt-5">{!reportCol.EWIBranchName}</div>
+                                <div class="as_column pb-5 pt-5" style="min-width: 55px;">{!reportCol.caseDisputeRef}</div>
+                                <div class="as_column pb-5 pt-5">{!reportCol.tenancyAddress}</div>
+                                <div class="as_column pb-5 pt-5">{!reportCol.caseStatus}</div>
+                                <div class="as_column pb-5 pt-5">{!reportCol.daysoverDue}</div>
+                                <div class="as_column pb-5 pt-5">{!reportCol.recivedAmount}</div>
+                                <div class="as_column pb-5 pt-5">{!reportCol.totalBalanceAmount}</div>
+                                <!-- <apex:outputpanel rendered="{!reportCol.remainingAmount>0}"> -->
+                                    <div class="as_column pb-5 pt-5"  style="{!IF(reportCol.remainingAmount>0,'color: black','color: Red')}">{!reportCol.remainingAmount}</div>
+                                <!-- </apex:outputpanel>
+                                <apex:outputpanel rendered="{!reportCol.remainingAmount<0}">
+                                    <div class="as_column pb-5 pt-5" style="color: Red;">{!reportCol.remainingAmount}</div>
+                                </apex:outputpanel> -->
+                            </div>
+                        </apex:repeat>
+                    </apex:outputpanel>
+                    <!-- <apex:outputpanel rendered="{!installmentListDATA.size>0}">
+                        <apex:repeat value="{!installmentListDATA}" var="instObj">
+                            <div class="as_row">
+                                <div class="as_column pb-5 pt-5" style="min-width: 75px;">
+                                    <apex:outputText value="{0, date,  dd / MM / yyyy}">
+                                    <apex:param value="{!IF(instObj.Inbound_Reports__r.size>0,instObj.Inbound_Reports__r[0].Collection_Date__c,instObj.Case__r.Evidence_Gathering_AGLL_DueDate__c)}" />
+                                    </apex:outputText>
+                                </div>
+                                <div class="as_column pb-5 pt-5">{!instObj.Case__r.Agent_Branch__r.EWI_Branch_Name__c}</div>
+                                <div class="as_column pb-5 pt-5" style="min-width: 55px;">{!instObj.Case__r.Dispute_Reference__c}</div>
+                                <div class="as_column pb-5 pt-5">{!instObj.Case__r.Deposit_Account_Number__r.First_line_of_address_with_postcode__c}</div>
+                                <div class="as_column pb-5 pt-5">{!instObj.Case__r.Status}</div>
+                                <div class="as_column pb-5 pt-5">{!IF(instObj.Inbound_Reports__r.size>0,instObj.Inbound_Reports__r[0].Days_Overdue__c,instObj.Case__r.Days_Overdue__c)}</div>
+                                <div class="as_column pb-5 pt-5">{!IF(instObj.Inbound_Reports__r.size>0,instObj.Inbound_Reports__r[0].Amount__c,instObj.Case__r.Amount_of_Disputed_Funds_Received__c)}</div>
+                                <div class="as_column pb-5 pt-5">{!IF(instObj.Inbound_Reports__r.size>0,instObj.Case__r.Amount_of_Disputed_Funds_Remaining__c,instObj.Case__r.Amount_of_Disputed_Funds_Required__c)}</div>
+                                <div class="as_column pb-5 pt-5">{!IF(instObj.Inbound_Reports__r.size>0,instObj.Case__r.Amount_of_Disputed_Funds_Remaining__c-instObj.Inbound_Reports__r[0].Amount__c,instObj.Case__r.Amount_of_Disputed_Funds_Remaining__c)}</div>
+                            </div>
+                        </apex:repeat> 
+                    </apex:outputpanel>
+                    
+                    <apex:outputpanel rendered="{!InboundReportsListDATA.size>0}">
+                        <apex:repeat value="{!InboundReportsListDATA}" var="inbReportObj">
+                            <div class="as_row">
+                                <div class="as_column pb-5 pt-5">
+                                    <apex:outputText value="{0, date,  dd / MM / yyyy}">
+                                    <apex:param value="{!inbReportObj.Collection_Date__c}" />
+                                    </apex:outputText>
+                                </div>
+                                <div class="as_column pb-5 pt-5"></div>
+                                <div class="as_column pb-5 pt-5"></div>
+                                <div class="as_column pb-5 pt-5"></div>
+                                <div class="as_column pb-5 pt-5"></div>
+                                <div class="as_column pb-5 pt-5">{!inbReportObj.Days_Overdue__c}</div>
+                                <div class="as_column pb-5 pt-5">{!inbReportObj.Amount__c}</div>
+                                <div class="as_column pb-5 pt-5"></div>
+                                <div class="as_column pb-5 pt-5" style="color: Red;">-{!inbReportObj.Amount__c}</div>
+                            </div>
+                        </apex:repeat> 
+                    </apex:outputpanel> -->
+                    <div class="as_row">
+                        <div class="as_column"></div>
+                        <div class="as_column"></div>
+                        <div class="as_column"></div>
+                        <div class="as_column"></div>
+                        <div class="as_column"></div>
+                        <div class="as_column"></div>
+                        <div class="as_column"></div>
+                        <div class="as_column"><strong>Balance Outstanding</strong></div>
+                        <div class="as_column with_border">{!PDFWrapperData.balanceOutstanding}</div>
+                    </div>
+                    <div class="as_row">
+                        <div class="as_column"></div>
+                        <div class="as_column"></div>
+                        <div class="as_column"></div>
+                        <div class="as_column"></div>
+                        <div class="as_column with_border"><strong>0-10 Days</strong></div>
+                        <div class="as_column with_border"><strong>10-20 Days</strong></div>
+                        <div class="as_column with_border"><strong>20-30 Days</strong></div>
+                        <div class="as_column with_border"><strong>30 + Days</strong></div>
+                        <div class="as_column with_border"></div>
+                    </div>
+                    <div class="as_row">
+                        <div class="as_column"></div>
+                        <div class="as_column"></div>
+                        <div class="as_column"></div>
+                        <div class="as_column"></div>
+                        <div class="as_column text-right with_border">{!PDFWrapperData.amountBefore10Days}</div>
+                        <div class="as_column text-right with_border">{!PDFWrapperData.amountAfter10Days}</div>
+                        <div class="as_column text-right with_border">{!PDFWrapperData.amountAfter20Days}</div>
+                        <div class="as_column text-right with_border">{!PDFWrapperData.amountAfter30Days}</div>
+                        <div class="as_column with_border"></div>
+                    </div>
+                </div>
+
+                <div class="custom_as_table border_top">
+                    <div class="as_row">
+                        <div class="as_column">
+                            <strong>Payment Terms</strong>
+                            <span>Disputed monies should be paid to TDS as soon as you become aware of a dispute.</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="custom_as_table border_top mb-5">
+                    <div class="as_row">
+                        <div class="as_column">
+                            <strong>BACS or faster payments can be made to:</strong>
+                            <span>NatWest Bank plc, Account name, The Dispute Service Ltd, Sort code 60-01-15, Account number 44511515</span>
+                            <span>Please e-mail remittance advices to credit.control@tenancydepositscheme.com</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+        <!-- Account Statement HTML End -->
+
+
+    </body>
+
+</apex:page>
